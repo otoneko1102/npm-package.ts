@@ -14,6 +14,26 @@ function validateName(name) {
   return regex.test(name);
 }
 
+async function ensurePrivateDir(cwd) {
+  const dir = path.join(cwd, '.private');
+  await fs.mkdir(dir, { recursive: true });
+  return dir;
+}
+
+async function backupFile(filePath) {
+  try {
+    const dir = await ensurePrivateDir(process.cwd());
+    const base = path.basename(filePath);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const dest = path.join(dir, `${base}.${ts}.bak`);
+    await fs.copyFile(filePath, dest);
+    return dest;
+  } catch (err) {
+    consola.warn(`Failed to backup ${filePath}: ${err.message}`);
+    return null;
+  }
+}
+
 async function replaceIfExists(filePath, replacements) {
   const stat = await fs.stat(filePath).catch(() => null);
   if (!stat) return { updated: false, reason: 'not-found' };
@@ -23,7 +43,7 @@ async function replaceIfExists(filePath, replacements) {
     modified = modified.replace(pattern, value);
   }
   if (modified !== orig) {
-    await fs.copyFile(filePath, `${filePath}.bak`).catch(() => {});
+    await backupFile(filePath).catch(() => {});
     await fs.writeFile(filePath, modified, 'utf8');
     return { updated: true };
   }
@@ -68,16 +88,16 @@ async function run() {
   const defaultCopyrightName = author || pkg.author || '';
   const copyrightName = (await rl.question(`Copyright holder name [${defaultCopyrightName}]: `)).trim() || defaultCopyrightName;
 
-  const confirm = (await rl.question('Confirm and apply changes? (y/N): ')).trim().toLowerCase();
+  const confirm = (await rl.question('Confirm and apply changes? (Y/n): ')).trim().toLowerCase();
   await rl.close();
 
-  if (confirm !== 'y' && confirm !== 'yes') {
+  if (confirm === 'n' || confirm === 'no') {
     consola.info('Aborted by user. No changes were made.');
     return;
   }
 
   try {
-    await fs.copyFile(pkgPath, `${pkgPath}.bak`).catch(() => {});
+    await backupFile(pkgPath).catch(() => {});
     pkg.name = name;
     pkg.description = description;
     if (author) pkg.author = author;
