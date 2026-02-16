@@ -35,7 +35,7 @@
   "homepage": "<your-repo>#readme",
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.0.9",
+    "@types/node": "^25.2.3",
     "consola": "^3.4.2",
     "cross-env": "^10.1.0",
     "esbuild": "^0.27.2",
